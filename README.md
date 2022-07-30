@@ -5,6 +5,16 @@ go-nginx-securely
 
 CLI tool that reroutes all traffic for a given domain to use SSL over 443. By default uses LetsEncrypt paths.
 
+## Usage
+
+  $ go-nginx-securely --help
+  -inplace
+        whether to edit inplace (defaults to stdout emission)
+  -nginx_config string
+        nginx config filepath
+  -server_name string
+        server_name, only this one will be secured
+
 ## License
 
 Licensed under any of:

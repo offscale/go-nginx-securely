@@ -12,7 +12,7 @@ import (
 
 func main() {
 	serverName := flag.String("server_name", "", "server_name, only this one will be secured")
-	nginxConfig := flag.String("nginx_config", "", "nginx nginx_config filepath")
+	nginxConfig := flag.String("nginx_config", "", "nginx config filepath")
 	inplace := flag.Bool("inplace", false, "whether to edit inplace (defaults to stdout emission)")
 	flag.Parse()
 
