@@ -7,12 +7,12 @@ CLI tool that reroutes all traffic for a given domain to use SSL over 443. By de
 
 ## Usage
 
-  $ go-nginx-securely --help
-  -inplace
+    $ go-nginx-securely --help
+    -inplace
         whether to edit inplace (defaults to stdout emission)
-  -nginx_config string
+    -nginx_config string
         nginx config filepath
-  -server_name string
+    -server_name string
         server_name, only this one will be secured
 
 ## License
