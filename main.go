@@ -7,10 +7,59 @@ import (
 	"fmt"
 	"os"
 
-	nginxparser "github.com/faceair/nginx-parser"
+	crossplane "github.com/aluttik/go-crossplane"
 )
 
 func main() {
+	serverName, nginxConfig, inplace := cliParser()
+
+	_, err := fmt.Fprintf(flag.CommandLine.Output(), "server_name = \"%s\"\n", *serverName)
+	if err != nil {
+		panic(err)
+	}
+
+	/*directives, err := nginxparser.New(nil).ParseFile(*nginxConfig)
+	if err != nil {
+		panic(err)
+	}
+
+	body, err := json.MarshalIndent(directives, "", "  ")
+	if err != nil {
+		panic(err)
+	}*/
+
+	payload, err := crossplane.Parse(*nginxConfig, &crossplane.ParseOptions{SkipDirectiveContextCheck: true, SkipDirectiveArgsCheck: true})
+	if err != nil {
+		panic(err)
+	}
+
+	b, err := json.Marshal(payload)
+	if err != nil {
+		panic(err)
+	}
+
+	/*if hasUnsecuredServerName(*serverName, directives) {
+		os.Exit(44)
+	}*/
+
+	if *inplace {
+		stat, err := os.Stat(*nginxConfig)
+		if err != nil {
+			panic(err)
+		}
+		err = os.WriteFile(*nginxConfig, b, stat.Mode().Perm())
+		if err != nil {
+			panic(err)
+		}
+	} else {
+		_, err := fmt.Fprintln(os.Stdout, string(b))
+		if err != nil {
+			panic(err)
+		}
+	}
+}
+
+func cliParser() (*string, *string, *bool) {
 	serverName := flag.String("server_name", "", "server_name, only this one will be secured")
 	nginxConfig := flag.String("nginx_config", "", "nginx config filepath")
 	inplace := flag.Bool("inplace", false, "whether to edit inplace (defaults to stdout emission)")
@@ -51,35 +100,5 @@ func main() {
 		flag.Usage()
 		os.Exit(cliErrorCode)
 	}
-
-	_, err := fmt.Fprintf(flag.CommandLine.Output(), "server_name = \"%s\"\n", *serverName)
-	if err != nil {
-		panic(err)
-	}
-
-	directives, err := nginxparser.New(nil).ParseFile(*nginxConfig)
-	if err != nil {
-		panic(err)
-	}
-
-	body, err := json.MarshalIndent(directives, "", "  ")
-	if err != nil {
-		panic(err)
-	}
-
-	if *inplace {
-		stat, err := os.Stat(*nginxConfig)
-		if err != nil {
-			panic(err)
-		}
-		err = os.WriteFile(*nginxConfig, body, stat.Mode().Perm())
-		if err != nil {
-			panic(err)
-		}
-	} else {
-		_, err := fmt.Fprintln(os.Stdout, string(body))
-		if err != nil {
-			panic(err)
-		}
-	}
+	return serverName, nginxConfig, inplace
 }

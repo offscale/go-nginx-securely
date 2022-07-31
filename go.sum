@@ -1,2 +1,2 @@
-github.com/faceair/nginx-parser v0.0.0-20220103105052-84c1cdfaaaaa h1:YWUAGnqprXwk7SIoLUbRSI3ZT2DNIepBU8UuxOLvKPI=
-github.com/faceair/nginx-parser v0.0.0-20220103105052-84c1cdfaaaaa/go.mod h1:iuaQi3Lr2cxqYYfwL+XCVtqakWORiZlYdnTNI0uc4XM=
+github.com/aluttik/go-crossplane v0.0.0-20210526174032-f987c53bd056 h1:1eoqUwORMfzluOES+cAo0E0oGgaMnuJrCRRKIhTz6Kc=
+github.com/aluttik/go-crossplane v0.0.0-20210526174032-f987c53bd056/go.mod h1:JowLMBuvXWv1ONBYxsDeyjSeoxj3YZPYymToxJMitXA=
