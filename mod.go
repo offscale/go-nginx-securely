@@ -5,6 +5,7 @@ import "github.com/aluttik/go-crossplane"
 func hasUnsecuredServerName(serverName string, config []crossplane.Config) bool {
 	hasServerName := false
 	isSecure := false
+	/* TODO: `server` within `http` block… or at arbitrary nesting? */
 
 	for _, conf := range config {
 		for _, directive0 := range conf.Parsed {
