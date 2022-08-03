@@ -1,6 +1,9 @@
 package main
 
-import "github.com/aluttik/go-crossplane"
+import (
+	"fmt"
+	"github.com/aluttik/go-crossplane"
+)
 
 func hasUnsecuredServerName(serverName string, config []crossplane.Config) bool {
 	hasServerName := false
@@ -173,5 +176,60 @@ func getSecureVars(serverName string, sslCertificate string, sslCertificateKey s
 				},
 			},
 		},
+	}
+}
+
+func getRedirectServerBlock(serverName string) crossplane.Directive {
+	return crossplane.Directive{
+		Directive: "server",
+		Line:      1,
+		Args:      []string{},
+		Block: &[]crossplane.Directive{
+			{
+				Directive: "listen",
+				Line:      2,
+				Args: []string{
+					"80",
+				},
+			},
+			{
+				Directive: "server_name",
+				Line:      3,
+				Args: []string{
+					serverName,
+				},
+			},
+			{
+				Directive: "return",
+				Line:      4,
+				Args: []string{
+					"301",
+					"https://$server_name$request_uri",
+				},
+			},
+		},
+	}
+}
+
+func replaceServerBlock(config []crossplane.Config, replacementBlocks []crossplane.Directive, serverName string, redirectHttp bool) {
+	for _, conf := range config {
+		for _, directive0 := range conf.Parsed {
+			if directive0.Directive == "server" {
+				for _, directive1 := range *directive0.Block {
+					if directive1.Directive == "server_name" {
+						if len(directive1.Args) > 0 {
+							for _, arg := range directive1.Args {
+								if arg == serverName {
+									fmt.Printf("Extract this server block: %v\n", directive1)
+									fmt.Println("Remove: `listen 80` and `ssl off` blocks")
+									fmt.Println("Add secure vars")
+									break
+								}
+							}
+						}
+					}
+				}
+			}
+		}
 	}
 }

@@ -74,8 +74,31 @@ const secureVars string = `server {
 }
 `
 
+const redirectVars string = `server {
+    listen 80;
+    server_name foo.com;
+    return 301 https://$server_name$request_uri;
+}
+` /* `listen [::]:80;` if exposing with IPv6 */
+
 func TestGetSecureVars(t *testing.T) {
-	dir, err := os.MkdirTemp("", "TestGetSecureVars")
+	DirectivesTestFixture(
+		t,
+		secureVars,
+		getSecureVars("foo.com", "ssl.cert", "ssl.key", "dhparam.ssl"),
+	)
+}
+
+func TestGetRedirectServerBlock(t *testing.T) {
+	DirectivesTestFixture(
+		t,
+		redirectVars,
+		[]crossplane.Directive{getRedirectServerBlock("foo.com")},
+	)
+}
+
+func DirectivesTestFixture(t *testing.T, expectation string, directives []crossplane.Directive) {
+	dir, err := os.MkdirTemp("", "DirectivesTestFixture")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -93,8 +116,8 @@ func TestGetSecureVars(t *testing.T) {
 			if er != nil {
 				log.Fatal(er)
 			}
-			if string(buf) != secureVars {
-				t.Fatalf("Expected `%s` got `%s`", secureVars, buf)
+			if string(buf) != expectation {
+				t.Fatalf("Expected `%s` got `%s`", expectation, buf)
 			}
 			er = os.Remove(absoluteFilename)
 			if er != nil {
@@ -107,17 +130,22 @@ func TestGetSecureVars(t *testing.T) {
 		}
 	}(dir)
 
-	err = crossplane.BuildFiles(crossplane.Payload{Status: "ok",
-		Errors: []crossplane.PayloadError{},
-		Config: []crossplane.Config{
-			{
-				File:   "filename0.conf",
-				Status: "ok",
-				Errors: []crossplane.ConfigError{},
-				Parsed: getSecureVars("foo.com", "ssl.cert", "ssl.key", "dhparam.ssl"),
+	err = crossplane.BuildFiles(
+		crossplane.Payload{
+			Status: "ok",
+			Errors: []crossplane.PayloadError{},
+			Config: []crossplane.Config{
+				{
+					File:   "filename0.conf",
+					Status: "ok",
+					Errors: []crossplane.ConfigError{},
+					Parsed: directives,
+				},
 			},
 		},
-	}, dir, &crossplane.BuildOptions{})
+		dir,
+		&crossplane.BuildOptions{},
+	)
 	if err != nil {
 		log.Fatal(err)
 	}

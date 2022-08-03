@@ -6,12 +6,13 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 
 	crossplane "github.com/aluttik/go-crossplane"
 )
 
 func main() {
-	serverName, nginxConfig, inplace := cliParser()
+	serverName, nginxConfig, inplace, sslCertificate, sslCertificateKey, sslDhparam := cliParser()
 
 	_, err := fmt.Fprintf(flag.CommandLine.Output(), "server_name = \"%s\"\n", *serverName)
 	if err != nil {
@@ -38,9 +39,11 @@ func main() {
 		panic(err)
 	}
 
-	/*if hasUnsecuredServerName(*serverName, directives) {
-		os.Exit(44)
-	}*/
+	if hasUnsecuredServerName(*serverName, payload.Config) {
+		getRedirectServerBlock(*serverName)
+		getSecureVars(*serverName, *sslCertificate, *sslCertificateKey, *sslDhparam)
+		//os.Exit(44)
+	}
 
 	if *inplace {
 		stat, err := os.Stat(*nginxConfig)
@@ -59,10 +62,16 @@ func main() {
 	}
 }
 
-func cliParser() (*string, *string, *bool) {
+func cliParser() (*string, *string, *bool, *string, *string, *string) {
 	serverName := flag.String("server_name", "", "server_name, only this one will be secured")
 	nginxConfig := flag.String("nginx_config", "", "nginx config filepath")
 	inplace := flag.Bool("inplace", false, "whether to edit inplace (defaults to stdout emission)")
+	sslCertificate := flag.String("ssl_certificate", "/etc/letsencrypt/live/${server_name}/fullchain.pem",
+		"SSL certificate, defaults to LetsEncrypt of `server_name`")
+	sslCertificateKey := flag.String("ssl_certificate_key", "/etc/letsencrypt/live/${server_name}/privkey.pem",
+		"SSL certificate key, defaults to LetsEncrypt of `server_name`")
+	sslDhparam := flag.String("ssl_dh_param", "/etc/letsencrypt/live/${server_name}/privkey.pem",
+		"SSL Diffie-Helmann, defaults to nginx default")
 	flag.Parse()
 
 	cliParseErrors := false
@@ -100,5 +109,8 @@ func cliParser() (*string, *string, *bool) {
 		flag.Usage()
 		os.Exit(cliErrorCode)
 	}
-	return serverName, nginxConfig, inplace
+	*sslCertificate = strings.Replace(*sslCertificate, "${server_name}", *serverName, 1)
+	*sslCertificate = strings.Replace(*sslCertificate, "${server_name}", *serverName, 1)
+	*sslDhparam = strings.Replace(*sslDhparam, "${server_name}", *serverName, 1)
+	return serverName, nginxConfig, inplace, sslCertificate, sslCertificateKey, sslDhparam
 }
