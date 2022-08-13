@@ -6,18 +6,16 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path"
+	"path/filepath"
 	"strings"
+	"syscall"
 
 	crossplane "github.com/aluttik/go-crossplane"
 )
 
 func main() {
 	serverName, nginxConfig, inplace, sslCertificate, sslCertificateKey, sslDhparam := cliParser()
-
-	_, err := fmt.Fprintf(flag.CommandLine.Output(), "server_name = \"%s\"\n", *serverName)
-	if err != nil {
-		panic(err)
-	}
 
 	/*directives, err := nginxparser.New(nil).ParseFile(*nginxConfig)
 	if err != nil {
@@ -40,9 +38,35 @@ func main() {
 	}
 
 	if hasUnsecuredServerName(*serverName, payload.Config) {
-		getRedirectServerBlock(*serverName)
-		getSecureVars(*serverName, *sslCertificate, *sslCertificateKey, *sslDhparam)
-		//os.Exit(44)
+		redirectServerBlock := getRedirectServerBlock(*serverName)
+		secureVarsBlock := getSecureVars(*serverName, *sslCertificate, *sslCertificateKey, *sslDhparam)
+		secureConfig(
+			&payload.Config,
+			*serverName,
+			&redirectServerBlock,
+			&secureVarsBlock,
+		)
+		payload.Config[0].File = filepath.Join( /*os.TempDir()*/ "/tmp", path.Base(payload.Config[0].File))
+		fmt.Printf("payload.Config[0].File to \"%s\"\n", payload.Config[0].File)
+
+		err = crossplane.BuildFiles(
+			*payload,
+			"/tmp/a",
+			&crossplane.BuildOptions{},
+		)
+		if err != nil {
+			panic(err)
+		}
+		fileContents, err := os.ReadFile(payload.Config[0].File)
+		if err != nil {
+			panic(err)
+		}
+		_, err = os.Stdout.Write(fileContents)
+		if err != nil {
+			panic(err)
+		}
+	} else {
+		os.Exit(33)
 	}
 
 	if *inplace {
@@ -54,12 +78,12 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-	} else {
+	} /*else {
 		_, err := fmt.Fprintln(os.Stdout, string(b))
 		if err != nil {
 			panic(err)
 		}
-	}
+	}*/
 }
 
 func cliParser() (*string, *string, *bool, *string, *string, *string) {
@@ -70,26 +94,26 @@ func cliParser() (*string, *string, *bool, *string, *string, *string) {
 		"SSL certificate, defaults to LetsEncrypt of `server_name`")
 	sslCertificateKey := flag.String("ssl_certificate_key", "/etc/letsencrypt/live/${server_name}/privkey.pem",
 		"SSL certificate key, defaults to LetsEncrypt of `server_name`")
-	sslDhparam := flag.String("ssl_dh_param", "/etc/letsencrypt/live/${server_name}/privkey.pem",
+	sslDhparam := flag.String("ssl_dh_param", "/etc/ssl/certs/dhparam.pem",
 		"SSL Diffie-Helmann, defaults to nginx default")
 	flag.Parse()
 
-	cliParseErrors := false
-	cliErrorCode := 1
+	cliParseErrors := 0
+	cliErrorCode := syscall.Errno(1)
 
 	if *serverName == "" {
 		_, err := fmt.Fprintln(flag.CommandLine.Output(), "`server_name`\trequired but found unset")
 		if err != nil {
 			panic(err)
 		}
-		cliParseErrors = true
+		cliParseErrors++
 	}
 	if *nginxConfig == "" {
 		_, err := fmt.Fprintln(flag.CommandLine.Output(), "`nginx_config`\trequired but found unset")
 		if err != nil {
 			panic(err)
 		}
-		cliParseErrors = true
+		cliParseErrors++
 	} else {
 		_, err := os.Stat(*nginxConfig)
 		if err != nil {
@@ -98,19 +122,21 @@ func cliParser() (*string, *string, *bool, *string, *string, *string) {
 				if err != nil {
 					panic(err)
 				}
-				cliParseErrors = true
-				cliErrorCode = 2
+				cliParseErrors++
+				cliErrorCode = syscall.ENOENT
 			} else {
 				panic(err)
 			}
 		}
 	}
-	if cliParseErrors {
-		flag.Usage()
-		os.Exit(cliErrorCode)
+	if cliParseErrors > 0 {
+		if cliParseErrors > 1 || cliErrorCode != 2 {
+			flag.Usage()
+		}
+		os.Exit(int(cliErrorCode))
 	}
 	*sslCertificate = strings.Replace(*sslCertificate, "${server_name}", *serverName, 1)
-	*sslCertificate = strings.Replace(*sslCertificate, "${server_name}", *serverName, 1)
+	*sslCertificateKey = strings.Replace(*sslCertificateKey, "${server_name}", *serverName, 1)
 	*sslDhparam = strings.Replace(*sslDhparam, "${server_name}", *serverName, 1)
 	return serverName, nginxConfig, inplace, sslCertificate, sslCertificateKey, sslDhparam
 }

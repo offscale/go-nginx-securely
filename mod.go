@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"github.com/aluttik/go-crossplane"
 )
 
@@ -211,18 +210,21 @@ func getRedirectServerBlock(serverName string) crossplane.Directive {
 	}
 }
 
-func replaceServerBlock(config []crossplane.Config, replacementBlocks []crossplane.Directive, serverName string, redirectHttp bool) {
-	for _, conf := range config {
+func secureConfig(
+	config *[]crossplane.Config, serverName string,
+	redirectBlock *crossplane.Directive, secureVarsBlock *[]crossplane.Directive,
+) {
+	for _, conf := range *config {
 		for _, directive0 := range conf.Parsed {
 			if directive0.Directive == "server" {
 				for _, directive1 := range *directive0.Block {
+					/*(*config)[idx].Parsed = *secureVarsBlock*/
 					if directive1.Directive == "server_name" {
 						if len(directive1.Args) > 0 {
 							for _, arg := range directive1.Args {
 								if arg == serverName {
-									fmt.Printf("Extract this server block: %v\n", directive1)
-									fmt.Println("Remove: `listen 80` and `ssl off` blocks")
-									fmt.Println("Add secure vars")
+									if redirectBlock != nil {
+									}
 									break
 								}
 							}
@@ -232,4 +234,31 @@ func replaceServerBlock(config []crossplane.Config, replacementBlocks []crosspla
 			}
 		}
 	}
+}
+
+func mergeDirectives(block *[]crossplane.Directive, directive crossplane.Directive) []crossplane.Directive {
+	/* I don't think I can loop through and setup a `map` for efficiency…
+	   as the same key can be specified multiple times in nginx */
+	var directives []crossplane.Directive = *block
+	/*if copy(directives, *block) < 1 {panic("< 1")}*/
+	keysInBlock := make(map[string]bool)
+	i0, i1 := -1, -1
+
+	for idx0, directive0 := range *block {
+		keysInBlock[directive0.Directive] = true
+		for idx1, directive1 := range *directive0.Block {
+			keysInBlock[directive1.Directive] = true
+			i0 = idx0
+			i1 = idx1
+		}
+	}
+
+	for _, directive0 := range *directive.Block {
+		for _, directive1 := range *directive0.Block {
+			if !keysInBlock[directive1.Directive] {
+				directives[i0+i1] = directive1
+			}
+		}
+	}
+	return directives
 }
